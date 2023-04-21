@@ -96,7 +96,6 @@ export async function mealsRoutes(app: FastifyInstance) {
     const body = Object.values(result.data)
 
     if (body.length === 0) {
-      console.log({ body })
       return rep.status(200).send({ success: true })
     }
 
@@ -155,8 +154,6 @@ export async function mealsRoutes(app: FastifyInstance) {
       })
     }
 
-    console.log(resultParams)
-
     const { id } = resultParams.data
 
     const meal = await prisma.meals.findUnique({ where: { id } })
@@ -174,5 +171,56 @@ export async function mealsRoutes(app: FastifyInstance) {
     })
 
     rep.status(202).send({ success: true })
+  })
+
+  app.get('/', async (req: FastifyRequest, rep: FastifyReply) => {
+    const getMealQueryParamsSchema = z.object({
+      userId: z.string().uuid(),
+    })
+
+    const result = getMealQueryParamsSchema.safeParse(req.query)
+
+    console.log(result)
+
+    if (!result.success) {
+      return rep.status(404).send({
+        success: false,
+        message:
+          'key userId not found in query params or is not a uuid format.',
+      })
+    }
+
+    const { userId } = result.data
+
+    const meals = await prisma.meals.findMany({ where: { user_id: userId } })
+
+    rep.status(200).send({ success: true, data: meals })
+  })
+
+  app.get('/:id', async (req: FastifyRequest, rep: FastifyReply) => {
+    const getMealParamsSchema = z.object({
+      id: z.string().uuid(),
+    })
+
+    const resultParams = getMealParamsSchema.safeParse(req.params)
+
+    if (!resultParams.success) {
+      return rep.status(404).send({
+        success: false,
+        message: 'Meal id not found in params or is not a uuid format.',
+      })
+    }
+
+    const { id } = resultParams.data
+
+    const meal = await prisma.meals.findUnique({ where: { id } })
+
+    if (!meal) {
+      return rep
+        .status(404)
+        .send({ success: false, message: 'Meal not found.' })
+    }
+
+    rep.status(200).send({ success: true, data: meal })
   })
 }
