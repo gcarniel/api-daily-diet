@@ -1,9 +1,9 @@
-import { FastifyInstance } from 'fastify'
+import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma'
 
 export async function mealsRoutes(app: FastifyInstance) {
-  app.post('/', async (req, rep) => {
+  app.post('/', async (req: FastifyRequest, rep: FastifyReply) => {
     const postMealsBodySchema = z.object({
       name: z.string().min(3, { message: 'name is required' }),
       description: z.string().min(3, { message: 'name is required' }),
@@ -58,7 +58,7 @@ export async function mealsRoutes(app: FastifyInstance) {
     rep.status(201)
   })
 
-  app.put('/', async (req, rep) => {
+  app.put('/:id', async (req: FastifyRequest, rep: FastifyReply) => {
     const putMealsBodySchema = z.object({
       name: z.string().min(3, { message: 'name is required' }).optional(),
       description: z
@@ -68,19 +68,38 @@ export async function mealsRoutes(app: FastifyInstance) {
       date: z.coerce.date().optional(),
       hour: z.number().optional(),
       isTarget: z.boolean().optional(),
-      mealId: z.string(),
     })
+
+    const putMealParamsSchema = z.object({
+      id: z.string().uuid(),
+    })
+
+    const resultParams = putMealParamsSchema.safeParse(req.params)
+
+    if (!resultParams.success) {
+      return rep.status(404).send({ error: 'Meal id not found in params.' })
+    }
+
+    const { id } = resultParams.data
+
     const result = putMealsBodySchema.safeParse(req.body)
 
     if (!result.success) {
       return { errors: result.error }
     }
 
-    const { name, description, date, hour, isTarget, mealId } = result.data
+    const body = Object.values(result.data)
+
+    if (body.length === 0) {
+      console.log({ body })
+      return rep.status(200).send({ success: true })
+    }
+
+    const { name, description, date, hour, isTarget } = result.data
 
     const meal = await prisma.meals.findUnique({
       where: {
-        id: mealId,
+        id,
       },
       select: {
         description: true,
@@ -105,13 +124,13 @@ export async function mealsRoutes(app: FastifyInstance) {
       is_target: isTarget ? isTarget : meal.is_target,
     }
 
-    const response = await prisma.meals.update({
+    await prisma.meals.update({
       where: { id: meal.id },
       data: {
         ...updateMeal,
       },
     })
 
-    rep.status(200).send({ success: true, data: response })
+    rep.status(200).send({ success: true })
   })
 }
