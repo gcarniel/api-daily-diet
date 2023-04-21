@@ -180,8 +180,6 @@ export async function mealsRoutes(app: FastifyInstance) {
 
     const result = getMealQueryParamsSchema.safeParse(req.query)
 
-    console.log(result)
-
     if (!result.success) {
       return rep.status(404).send({
         success: false,
@@ -222,5 +220,27 @@ export async function mealsRoutes(app: FastifyInstance) {
     }
 
     rep.status(200).send({ success: true, data: meal })
+  })
+
+  app.get('/amount', async (req: FastifyRequest, rep: FastifyReply) => {
+    const getMealQueryParamsSchema = z.object({
+      userId: z.string().uuid(),
+    })
+
+    const result = getMealQueryParamsSchema.safeParse(req.query)
+
+    if (!result.success) {
+      return rep.status(404).send({
+        success: false,
+        message:
+          'key userId not found in query params or is not a uuid format.',
+      })
+    }
+
+    const { userId } = result.data
+
+    const amount = await prisma.meals.count({ where: { user_id: userId } })
+
+    rep.status(200).send({ success: true, data: { amount } })
   })
 }
