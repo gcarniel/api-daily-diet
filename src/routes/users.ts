@@ -1,21 +1,9 @@
 import { FastifyInstance } from 'fastify'
 import { prisma } from '../lib/prisma'
 import { z } from 'zod'
+import { createHash } from '../utils/generate-hash'
 
 export async function usersRoutes(app: FastifyInstance) {
-  app.get('/', async (req, rep) => {
-    console.log(req.body)
-
-    // await prisma.users.create({
-    //   data: {
-    //     name: 'gabriel',
-    //     email: 'gabriel!@',
-    //     password: '123',
-    //   },
-    // })
-    return 'hello, world'
-  })
-
   app.post('/', async (req, rep) => {
     const postUsersBodySchema = z.object({
       name: z.string(),
@@ -35,11 +23,13 @@ export async function usersRoutes(app: FastifyInstance) {
       return rep.status(404).send({ error: 'User already exists.' })
     }
 
+    const hash = createHash(password)
+
     await prisma.users.create({
       data: {
         name,
         email,
-        password,
+        password: hash,
       },
     })
 
