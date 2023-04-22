@@ -243,4 +243,38 @@ export async function mealsRoutes(app: FastifyInstance) {
 
     rep.status(200).send({ success: true, data: { amount } })
   })
+
+  app.get('/target', async (req: FastifyRequest, rep: FastifyReply) => {
+    const getMealQueryParamsSchema = z.object({
+      userId: z.string().uuid(),
+    })
+
+    const result = getMealQueryParamsSchema.safeParse(req.query)
+
+    if (!result.success) {
+      return rep.status(404).send({
+        success: false,
+        message:
+          'key userId not found in query params or is not a uuid format.',
+      })
+    }
+
+    const { userId } = result.data
+
+    const mealsIn = await prisma.meals.count({
+      where: {
+        user_id: userId,
+        is_target: true,
+      },
+    })
+
+    const mealsOut = await prisma.meals.count({
+      where: {
+        user_id: userId,
+        is_target: false,
+      },
+    })
+
+    rep.status(200).send({ success: true, data: { mealsIn, mealsOut } })
+  })
 }
